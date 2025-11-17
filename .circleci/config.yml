@@ -1,0 +1,66 @@
+version: 2.1
+
+jobs:
+  lint-dockerfile:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - checkout
+      - run:
+          name: Make scripts executable
+          command: chmod +x .kirun/scripts/*.sh || true
+      - run:
+          name: Lint Dockerfile (hadolint)
+          command: .kirun/scripts/lint-dockerfile.sh Dockerfile
+
+  test:
+    docker:
+      - image: cimg/go:1.20  # sesuaikan versi go
+    steps:
+      - checkout
+      - run:
+          name: Setup Go env
+          command: |
+            go version
+      - run:
+          name: Run unit tests
+          command: .kirun/scripts/test-app.sh
+      - store_artifacts:
+          path: .
+          destination: test-artifacts
+
+  build-and-push:
+    macos: false
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - checkout
+      - setup_remote_docker:
+          version: 20.10.7
+      - run:
+          name: Make scripts executable
+          command: chmod +x .kirun/scripts/*.sh || true
+      - run:
+          name: Build and push docker image
+          command: .kirun/scripts/build-app.sh
+
+workflows:
+  version: 2
+  ci-backend:
+    jobs:
+      - lint-dockerfile:
+          filters:
+            branches:
+              only: karsajobs
+      - test:
+          requires:
+            - lint-dockerfile
+          filters:
+            branches:
+              only: karsajobs
+      - build-and-push:
+          requires:
+            - test
+          filters:
+            branches:
+              only: karsajobs
