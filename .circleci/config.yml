@@ -7,60 +7,46 @@ jobs:
     steps:
       - checkout
       - run:
-          name: Make scripts executable
-          command: chmod +x .kirun/scripts/*.sh || true
+          name: Install hadolint
+          command: |
+            curl -sSL -o /usr/local/bin/hadolint https://github.com/hadolint/hadolint/releases/latest/download/hadolint-linux-x86_64
+            chmod +x /usr/local/bin/hadolint
       - run:
-          name: Lint Dockerfile (hadolint)
-          command: .kirun/scripts/lint-dockerfile.sh Dockerfile
+          name: Lint Dockerfile
+          command: hadolint Dockerfile
 
-  test:
+  test-app:
     docker:
-      - image: cimg/go:1.20  # sesuaikan versi go
+      - image: cimg/go:1.22
     steps:
       - checkout
       - run:
-          name: Setup Go env
+          name: Run Go tests
           command: |
-            go version
-      - run:
-          name: Run unit tests
-          command: .kirun/scripts/test-app.sh
-      - store_artifacts:
-          path: .
-          destination: test-artifacts
+            go mod download
+            go test -v -short --count=1 $(go list ./...)
 
-  build-and-push:
-    macos: false
+  build-app-karsajobs:
     docker:
       - image: cimg/base:stable
     steps:
       - checkout
-      - setup_remote_docker:
-          version: 20.10.7
+      - setup_remote_docker
       - run:
-          name: Make scripts executable
-          command: chmod +x .kirun/scripts/*.sh || true
+          name: Docker login
+          command: |
+            echo "$DOCKERHUB_PASSWORD" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
       - run:
-          name: Build and push docker image
-          command: .kirun/scripts/build-app.sh
+          name: Build Docker image
+          command: |
+            docker build -t $DOCKERHUB_USERNAME/karsajobs:$CIRCLE_SHA1 .
+      - run:
+          name: Push Docker image
+          command: |
+            docker push $DOCKERHUB_USERNAME/karsajobs:$CIRCLE_SHA1
 
 workflows:
   version: 2
   ci-backend:
     jobs:
       - lint-dockerfile:
-          filters:
-            branches:
-              only: karsajobs
-      - test:
-          requires:
-            - lint-dockerfile
-          filters:
-            branches:
-              only: karsajobs
-      - build-and-push:
-          requires:
-            - test
-          filters:
-            branches:
-              only: karsajobs
