@@ -4,7 +4,6 @@ jobs:
   lint-dockerfile:
     docker:
       - image: cimg/base:stable
-    working_directory: ~/project
     steps:
       - checkout
       - run:
@@ -18,19 +17,17 @@ jobs:
 
   build-app-karsajobs-ui:
     docker:
-      - image: cimg/node:18.18   # versi stabil
-    working_directory: ~/project
+      - image: cimg/node:18.18
     steps:
       - checkout
-      - run:
-          name: Show files
-          command: ls -lah
       - run:
           name: Install Dependencies
           command: npm install
       - run:
-          name: Build Frontend
-          command: npm run build
+          name: Fix OpenSSL issue (webpack + Node 18)
+          command: |
+            export NODE_OPTIONS=--openssl-legacy-provider
+            npm run build
       - setup_remote_docker
       - run:
           name: Docker login
