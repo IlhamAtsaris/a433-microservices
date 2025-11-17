@@ -27,7 +27,7 @@ jobs:
           command: ls -lah
       - run:
           name: Install Dependencies
-          command: npm ci
+          command: npm install
       - run:
           name: Build Frontend
           command: npm run build
