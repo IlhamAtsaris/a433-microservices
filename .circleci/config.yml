@@ -17,17 +17,15 @@ jobs:
 
   build-app-karsajobs-ui:
     docker:
-      - image: cimg/node:18.18
+      - image: cimg/node:16.20   # <<< SOLUSI UTAMA
     steps:
       - checkout
       - run:
           name: Install Dependencies
           command: npm install
       - run:
-          name: Fix OpenSSL issue (webpack + Node 18)
-          command: |
-            export NODE_OPTIONS=--openssl-legacy-provider
-            npm run build
+          name: Build Frontend
+          command: npm run build
       - setup_remote_docker
       - run:
           name: Docker login
